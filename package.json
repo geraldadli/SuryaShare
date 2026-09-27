@@ -11,6 +11,8 @@
     "deploy": "node scripts/deploy.mjs",
     "test": "node --test tests/contract.test.mjs",
     "test:pages": "node --test tests/pages.test.mjs",
+    "test:simulation": "node --test tests/simulation.test.mjs",
+    "demo": "vite --mode simulation --host 127.0.0.1 --port 5173 --strictPort",
     "build": "npm run compile && vite build",
     "build:pages": "node scripts/build-pages.mjs",
     "connect:sepolia": "node scripts/connect-sepolia.mjs",
