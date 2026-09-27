@@ -1,7 +1,7 @@
 import { BrowserProvider, Contract, JsonRpcProvider, ZeroAddress, formatEther, isAddress } from 'ethers';
 
 const $ = (selector) => document.querySelector(selector);
-const pagesPreview = import.meta.env.MODE === 'pages';
+const pagesPreview = import.meta.env.MODE === 'pages' && import.meta.env.VITE_PUBLIC_TESTNET !== 'true';
 const idr = value => `Rp${new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(Number(value))}`;
 const demoIdr = wei => idr(Number(wei) / 1e9);
 const short = address => `${address.slice(0, 6)}…${address.slice(-4)}`;
@@ -49,7 +49,7 @@ function updatePurchase() {
   const valid = Number.isInteger(quantity) && quantity > 0 && quantity <= (state?.available ?? 1000);
   $('#purchase-ownership').textContent = valid ? `${(quantity / 10).toFixed(1)}%` : '—';
   $('#purchase-total').textContent = valid ? idr(quantity * 100000) : '—';
-  $('#buy-button').textContent = pagesPreview ? 'Preview only · purchases offline' : busy ? 'Confirming transaction…' : !contract || !state ? 'Local chain unavailable' : !address ? 'Choose a demo wallet →' : isOperator() ? 'Switch to an investor wallet' : state.available === 0 ? 'All shares purchased' : 'Buy demo shares →';
+  $('#buy-button').textContent = pagesPreview ? 'Preview only · purchases offline' : busy ? 'Confirming transaction…' : !contract || !state ? 'Blockchain unavailable' : !address ? 'Connect wallet →' : isOperator() ? 'Switch to an investor wallet' : state.available === 0 ? 'All shares purchased' : 'Buy demo shares →';
   $('#buy-button').disabled = busy || !contract || !state || !valid || isOperator();
   $('#purchase-footnote').textContent = address ? `${walletName} · Test ETH + network fee` : 'Test ETH only. No real money.';
 }
@@ -74,7 +74,7 @@ function renderPortfolio() {
   const balance = state?.balance ?? 0, claimable = state?.claimable ?? 0n, claimed = state?.claimed ?? 0n;
   const percent = balance / 10;
   const myLogs = (state?.logs ?? []).filter(log => Object.values(log.args).some(value => typeof value === 'string' && value.toLowerCase() === address?.toLowerCase()));
-  $('#portfolio-page').innerHTML = `<div class="page-heading"><div><span class="eyebrow">MY SURYASHARE</span><h1>Your sunshine.<br>All in one place.</h1><p>${address ? `${esc(walletName)} · ${short(address)}` : 'Connect a wallet. Start your solar story.'}</p></div><button class="secondary-button" type="button" data-choose-wallet>${address ? 'Switch wallet ↗' : 'Choose a demo wallet ↗'}</button></div>
+  $('#portfolio-page').innerHTML = `<div class="page-heading"><div><span class="eyebrow">MY SURYASHARE</span><h1>Your sunshine.<br>All in one place.</h1><p>${address ? `${esc(walletName)} · ${short(address)}` : 'Connect a wallet. Start your solar story.'}</p></div><button class="secondary-button" type="button" data-choose-wallet>${address ? 'Switch wallet ↗' : 'Connect wallet ↗'}</button></div>
     <div class="portfolio-stats"><div class="stat-card"><span>Your shares</span><strong>${balance} <small>SURYA</small></strong><small>${percent.toFixed(1)}% of the demo project</small></div><div class="stat-card"><span>Demo share value</span><strong>${idr(balance * 100000)}</strong><small>At the original issue price</small></div><div class="stat-card highlight"><span>Demo income claimed</span><strong>${demoIdr(claimed)}</strong><small>${formatEther(claimed)} test ETH</small></div></div>
     <div class="portfolio-layout"><article class="card"><h2>Your piece of the rooftop.</h2><div class="ownership-row"><div class="ownership-ring"><svg viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="50" fill="none" stroke="#eee9d8" stroke-width="11"/><circle cx="60" cy="60" r="50" fill="none" stroke="#ffd400" stroke-width="11" pathLength="100" stroke-dasharray="${percent} 100"/></svg><strong>${percent.toFixed(1)}%</strong></div><div><h3>Cikarang Solar</h3><p>${balance} of 1,000 demo shares.</p><a class="text-button" href="#project">Get more shares ↗</a></div></div></article>
     <article class="card payout-card"><h2>Your slice is ready.</h2><div class="payout-amount">${demoIdr(claimable)}</div><p>${formatEther(claimable)} test ETH to claim.</p><button type="button" class="primary-button" data-write id="claim-button" ${!address || claimable === 0n || busy ? 'disabled' : ''}>Claim demo income →</button></article></div>
@@ -178,7 +178,7 @@ async function chooseWallet(index) {
 async function connectBrowserWallet() {
   if (busy) return;
   if (!window.ethereum) throw new Error('No browser wallet was found. Use Alice or Budi for the local demo, or open this app in a browser with a wallet extension.');
-  if (!deployment) throw new Error('Start the local chain before connecting.');
+  if (!deployment) throw new Error('The project is not connected to a blockchain yet.');
   const chainId = `0x${deployment.chainId.toString(16)}`;
   const current = await window.ethereum.request({ method: 'eth_chainId' });
   if (current !== chainId) {
@@ -291,13 +291,20 @@ async function initialize() {
     if (await provider.getCode(deployment.address) === '0x') throw new Error('The node restarted. Run npm run deploy to create a new demo contract.');
     contract = new Contract(deployment.address, deployment.abi, provider);
     if (deployment.chainId === 31337) accounts = (await provider.listAccounts()).slice(0, 3).map(account => account.address);
-    else document.querySelectorAll('[data-wallet]').forEach(button => { button.hidden = true; });
+    else {
+      document.querySelectorAll('[data-wallet]').forEach(button => { button.hidden = true; });
+      $('#wallet-dialog > p').textContent = 'Connect your Ethereum wallet on Sepolia. Purchases and claims use free test ETH.';
+      $('#browser-wallet').textContent = 'Connect wallet on Sepolia';
+      $('.demo-note').textContent = '✳ Sepolia testnet. Test ETH only. Real on-chain activity.';
+    }
     $('#network-badge').textContent = deployment.chainId === 31337 ? 'Local Ethereum' : 'Sepolia testnet';
     $('#contract-caption').textContent = `${short(deployment.address)} · Chain ${deployment.chainId}`;
     await refresh();
   } catch (error) {
     state = null;
-    $('#connection-error').textContent = `Local demo is not connected. Run npm start in the SuryaShare folder, then reload. ${errorMessage(error)}`;
+    $('#connection-error').textContent = deployment?.chainId === 11155111
+      ? `Sepolia could not be reached. Reload to retry. ${errorMessage(error)}`
+      : `Local demo is not connected. Run npm start in the SuryaShare folder, then reload. ${errorMessage(error)}`;
     $('#connection-error').hidden = false;
     updatePurchase();
   }

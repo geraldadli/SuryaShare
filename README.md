@@ -22,7 +22,7 @@ The interface uses sunny yellow, ivory, and navy, with large headlines and a cle
 
 **Public website preview:** [geraldadli.github.io/SuryaShare](https://geraldadli.github.io/SuryaShare/).
 
-GitHub Pages hosts the interface and income calculator. It does not run the local blockchain, so purchases, wallet connections, transfers, and claims are unavailable in this preview. Run the local demo below for the full transaction flow. Pushes to `main` automatically rebuild and deploy the preview through `.github/workflows/pages.yml`.
+GitHub Pages hosts the interface and income calculator. Until a Sepolia deployment is connected, purchases, wallet connections, transfers, and claims remain unavailable in the preview. Once connected, transactions run on Sepolia without a local server. Pushes to `main` automatically rebuild the site through `.github/workflows/pages.yml`.
 
 Use **Node.js 24** and npm. From your copy of the project:
 
@@ -139,6 +139,25 @@ The production build is written to `dist/`. A static frontend still needs a runn
 
 ## Optional Sepolia deployment
 
+### Deploy with your browser wallet (no private-key export)
+
+1. Open [the deployment page](https://geraldadli.github.io/SuryaShare/deploy.html) in a browser with an Ethereum wallet, such as MetaMask.
+2. Select Sepolia and fund a dedicated operator wallet with free Sepolia test ETH. The page links to faucet options.
+3. Connect that wallet and choose **Deploy on Sepolia**. Review and confirm the network fee in your wallet. The deploying wallet becomes the permanent operator.
+4. Copy the deployment transaction hash shown on the page. Connect the confirmed deployment from the repository:
+
+   ```sh
+   npm run connect:sepolia -- 0xYOUR_DEPLOYMENT_TRANSACTION_HASH
+   ```
+
+5. Commit the generated `deployments/sepolia.json` and push to `main`. GitHub Actions publishes the connected site automatically. This file contains public contract information, not a private key.
+
+`connect:sepolia` verifies the network, successful deployment receipt, contract bytecode, operator, and share supply before saving configuration. `build:pages` uses that configuration when present and keeps preview mode otherwise. Public builds never include the local deployment configuration.
+
+Investors use their own wallets with Sepolia test ETH. The operator publishes and funds reports from the deploying wallet. Alice/Budi shortcuts remain local-only. Solar data and IDR amounts are still simulated; transactions and balances persist on Sepolia. The public RPC is a shared service and may impose rate limits.
+
+### Command-line alternative
+
 No public testnet deployment has been performed. To deploy on Sepolia, set these environment variables in your shell:
 
 - `RPC_URL`: Sepolia RPC endpoint used for deployment.
@@ -150,3 +169,5 @@ Then run `npm run deploy` followed by `npm run dev`. The scripts do not automati
 Use a browser wallet connected to Sepolia, with the deployer wallet for operator actions. Investors need Sepolia test ETH. Built-in local demo accounts are unavailable on Sepolia, and receipts link to Sepolia Etherscan when configured.
 
 **Do not use `npm start` for Sepolia:** it creates a fresh local deployment and replaces the frontend deployment configuration.
+
+For GitHub Pages, run `npm run connect:sepolia -- <deployment transaction hash>` using the hash printed by the deploy script, then commit the generated configuration and push. Run `npm run test:pages` to build and check the public artifact locally.

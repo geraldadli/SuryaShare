@@ -10,7 +10,10 @@
     "compile": "node scripts/compile.mjs",
     "deploy": "node scripts/deploy.mjs",
     "test": "node --test tests/contract.test.mjs",
-    "build": "vite build",
+    "test:pages": "node --test tests/pages.test.mjs",
+    "build": "npm run compile && vite build",
+    "build:pages": "node scripts/build-pages.mjs",
+    "connect:sepolia": "node scripts/connect-sepolia.mjs",
     "preview": "vite preview --host 127.0.0.1 --port 4173 --strictPort"
   },
   "dependencies": {
