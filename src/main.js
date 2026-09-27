@@ -1,6 +1,7 @@
 import { BrowserProvider, Contract, JsonRpcProvider, ZeroAddress, formatEther, isAddress } from 'ethers';
 
 const $ = (selector) => document.querySelector(selector);
+const pagesPreview = import.meta.env.MODE === 'pages';
 const idr = value => `Rp${new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(Number(value))}`;
 const demoIdr = wei => idr(Number(wei) / 1e9);
 const short = address => `${address.slice(0, 6)}…${address.slice(-4)}`;
@@ -48,7 +49,7 @@ function updatePurchase() {
   const valid = Number.isInteger(quantity) && quantity > 0 && quantity <= (state?.available ?? 1000);
   $('#purchase-ownership').textContent = valid ? `${(quantity / 10).toFixed(1)}%` : '—';
   $('#purchase-total').textContent = valid ? idr(quantity * 100000) : '—';
-  $('#buy-button').textContent = busy ? 'Confirming transaction…' : !contract || !state ? 'Local chain unavailable' : !address ? 'Choose a demo wallet →' : isOperator() ? 'Switch to an investor wallet' : state.available === 0 ? 'All shares purchased' : 'Buy demo shares →';
+  $('#buy-button').textContent = pagesPreview ? 'Preview only · purchases offline' : busy ? 'Confirming transaction…' : !contract || !state ? 'Local chain unavailable' : !address ? 'Choose a demo wallet →' : isOperator() ? 'Switch to an investor wallet' : state.available === 0 ? 'All shares purchased' : 'Buy demo shares →';
   $('#buy-button').disabled = busy || !contract || !state || !valid || isOperator();
   $('#purchase-footnote').textContent = address ? `${walletName} · Test ETH + network fee` : 'Test ETH only. No real money.';
 }
@@ -257,8 +258,28 @@ for (const event of ['accountsChanged', 'chainChanged']) window.ethereum?.on?.(e
 });
 showPage(); renderPortfolio(); renderOperator();
 async function initialize() {
+  if (pagesPreview) {
+    const notice = $('#connection-error');
+    notice.classList.remove('error');
+    notice.textContent = 'Website preview. Explore the project and income calculator. Buying shares and claiming income are available in the local demo; a public testnet is not connected yet.';
+    notice.hidden = false;
+    $('#network-badge').textContent = 'Website preview';
+    $('#wallet-button').textContent = 'About this preview ↗';
+    $('#wallet-button').onclick = () => $('#about-dialog').showModal();
+    $('#wallet-dialog > p').textContent = 'Wallets are available in the local demo. This website preview is not connected to a blockchain.';
+    $('#wallet-dialog').querySelectorAll('button[data-wallet], #browser-wallet').forEach(button => { button.disabled = true; });
+    $('#sold-caption').textContent = 'Ownership data available in the local demo';
+    $('#funding-label').textContent = 'Live purchase data unavailable in this preview';
+    $('#funding-percent').textContent = '—';
+    $('#project-activity').textContent = 'Connect a public testnet to show blockchain activity here.';
+    $('#refresh-button').disabled = true;
+    $('#operator-page .notice').textContent = 'Try the income calculator below. Publishing reports and depositing income require the local demo.';
+    $('.demo-note').textContent = '✳ Hackathon website preview. Transactions available in the local demo.';
+    updatePurchase();
+    return;
+  }
   try {
-    const response = await fetch('/deployment.json', { cache: 'no-store' });
+    const response = await fetch(`${import.meta.env.BASE_URL}deployment.json`, { cache: 'no-store' });
     if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) throw new Error('Deployment configuration is missing.');
     deployment = await response.json();
     if (![31337, 11155111].includes(deployment.chainId)) throw new Error('This app only supports local Ethereum or Sepolia.');

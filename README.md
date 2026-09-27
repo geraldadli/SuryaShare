@@ -20,6 +20,10 @@ The interface uses sunny yellow, ivory, and navy, with large headlines and a cle
 
 ## Run locally
 
+**Public website preview:** [geraldadli.github.io/SuryaShare](https://geraldadli.github.io/SuryaShare/).
+
+GitHub Pages hosts the interface and income calculator. It does not run the local blockchain, so purchases, wallet connections, transfers, and claims are unavailable in this preview. Run the local demo below for the full transaction flow. Pushes to `main` automatically rebuild and deploy the preview through `.github/workflows/pages.yml`.
+
 Use **Node.js 24** and npm. From your copy of the project:
 
 ```sh
